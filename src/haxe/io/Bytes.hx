@@ -970,36 +970,36 @@ class Bytes
 		return pos < 0 || len < 0 || ((pos + len) : UInt) > (length : UInt);
 	}
 
-	public function get(pos:Int):Int
+	public inline function get(pos:Int):Int
 	{
 		return if (out(pos)) 0 else b[pos];
 	}
 
-	public function set(pos:Int, v:Int):Void
+	public inline function set(pos:Int, v:Int):Void
 	{
 		if (out(pos)) throw Error.OutsideBounds;
 		b[pos] = v;
 	}
 
-	public function blit(pos:Int, src:Bytes, srcpos:Int, len:Int):Void
+	public inline function blit(pos:Int, src:Bytes, srcpos:Int, len:Int):Void
 	{
 		if (outRange(pos, len) || src.outRange(srcpos, len)) throw Error.OutsideBounds;
 		b.blit(pos, src.b, srcpos, len);
 	}
 
-	public function fill(pos:Int, len:Int, value:Int):Void
+	public inline function fill(pos:Int, len:Int, value:Int):Void
 	{
 		if (outRange(pos, len)) throw Error.OutsideBounds;
 		b.fill(pos, len, value);
 	}
 
-	public function sub(pos:Int, len:Int):Bytes
+	public inline function sub(pos:Int, len:Int):Bytes
 	{
 		if (outRange(pos, len)) throw Error.OutsideBounds;
 		return new Bytes(b.sub(pos, len), len);
 	}
 
-	public function compare(other:Bytes):Int
+	public inline function compare(other:Bytes):Int
 	{
 		var len = length < other.length ? length : other.length;
 		var r = b.compare(0, other.b, 0, len);
@@ -1007,27 +1007,28 @@ class Bytes
 		return r;
 	}
 
-	public function getDouble(pos:Int):Float
+	public inline function getDouble(pos:Int):Float
 	{
 		return if (out(pos + 7)) 0.
 		else
 			b.getF64(pos);
 	}
 
-	public function getFloat(pos:Int):Float
+	public inline function getFloat(pos:Int):Float
 	{
 		return if (out(pos + 3)) 0.
 		else
 			b.getF32(pos);
 	}
 
-	public function setDouble(pos:Int, v:Float):Void
+	public inline function setDouble(pos:Int, v:Float):Void
 	{
 		if (out(pos + 7)) throw Error.OutsideBounds;
 		b.setF64(pos, v);
 	}
 
-	public function setFloat(pos:Int, v:Float):Void
+	//CL
+	public inline function setFloat(pos:Int, v:Float):Void
 	{
 		if (out(pos + 3)) throw Error.OutsideBounds;
 		b.setF32(pos, v);
@@ -1044,18 +1045,19 @@ class Bytes
 		b.setUI16(pos, v);
 	}
 
-	public function getInt32(pos:Int):Int
+	public inline function getInt32(pos:Int):Int
 	{
 		return if (out(pos + 3)) 0 else b.getI32(pos);
 	}
 
-	public function getInt64(pos:Int):haxe.Int64
+	public inline function getInt64(pos:Int):haxe.Int64
 	{
 		if (out(pos + 7)) return haxe.Int64.ofInt(0);
 		return haxe.Int64.make(b.getI32(pos + 4), b.getI32(pos));
 	}
 
-	public function setInt32(pos:Int, v:Int):Void
+	//CL
+	public inline function setInt32(pos:Int, v:Int):Void
 	{
 		if (out(pos + 3)) throw Error.OutsideBounds;
 		b.setI32(pos, v);
