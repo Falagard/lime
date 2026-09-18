@@ -244,10 +244,10 @@ class MacPlatform extends PlatformTarget
 					"-o", executablePath,
 					"-std=c11",
 					"-Wl,-rpath,@executable_path",
-					// leaves room for install_name_tool -change to lengthen the embedded
-					// dylib load command names below -- some vendored .hdll files (e.g.
-					// sqlite.hdll) carry a mismatched internal install-name
-					// (sqlite-mac.hdll) that must be rewritten post-link.
+					// leaves room for install_name_tool -change below to rewrite every
+					// dependency's short embedded ID (e.g. "vlc.hdll") to the longer
+					// "@executable_path/vlc.hdll" -- without this, install_name_tool fails
+					// with "larger updated load commands do not fit".
 					"-Wl,-headerpad_max_install_names",
 					"-I", Path.combine(targetDirectory, "obj"),
 					Path.combine(targetDirectory, "obj/ApplicationMain.c"),
@@ -280,19 +280,6 @@ class MacPlatform extends PlatformTarget
 						default:
 					}
 				}
-
-				// HASHLINK-NATIVE-ARM64-TEST-RUNTIME-S1 exploratory hlc attempt: sqlite.hdll
-				// (as vendored via SideWinder's native/sqlite build) carries a mismatched
-				// internal install-name (`sqlite-mac.hdll`) that doesn't match its actual
-				// filename on disk. The `hl` bytecode interpreter never notices -- it dlopens
-				// hdlls by literal filename, ignoring the embedded ID -- but hlc's real dyld
-				// link DOES resolve dependents by embedded ID, so the -change loop above
-				// (which assumes embedded ID == bare filename) silently fails to fix this one
-				// dependency and the resulting executable can't find it at launch. One-off
-				// fixup for this known mismatch; a real fix belongs in rebuilding sqlite.hdll
-				// with a correct -install_name.
-				System.runCommand("", "install_name_tool",
-					["-change", "sqlite-mac.hdll", "@executable_path/sqlite.hdll", executablePath]);
 			}
 			else
 			{
