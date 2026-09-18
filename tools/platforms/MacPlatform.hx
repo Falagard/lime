@@ -226,17 +226,29 @@ class MacPlatform extends PlatformTarget
 				var compiler = project.targetFlags.exists("clang") ? "clang" : "gcc";
 				// the libraries were compiled as x86_64, so if the build is
 				// happening on ARM64 instead, we need to ensure that the
-				// same architecture is used for the executable, so we wrap our
-				// compiler command with the `arch -x86_64` command.
-				// if we ever support ARM or Universal binaries, this will
-				// need to be handled differently.
+				// same architecture is used for the executable. The original
+				// approach here wrapped the compiler command with `arch -x86_64`,
+				// which only works if the compiler binary itself is a fat/universal
+				// binary with an x86_64 slice to select -- modern Xcode Command Line
+				// Tools clang on Apple Silicon is arm64-only (no x86_64 slice), so
+				// that wrapping silently became a no-op and the compile proceeded
+				// as native arm64, which then failed to link against these x86_64-only
+				// libraries. Passing `-arch x86_64` as a genuine compiler flag instead
+				// cross-compiles correctly regardless of the compiler binary's own
+				// architecture. if we ever support ARM or Universal binaries, this
+				// will need to be handled differently.
 				var command = [
-					"arch", "-x86_64",
 					compiler,
+					"-arch", "x86_64",
 					"-O3",
 					"-o", executablePath,
 					"-std=c11",
 					"-Wl,-rpath,@executable_path",
+					// leaves room for install_name_tool -change to lengthen the embedded
+					// dylib load command names below -- some vendored .hdll files (e.g.
+					// sqlite.hdll) carry a mismatched internal install-name
+					// (sqlite-mac.hdll) that must be rewritten post-link.
+					"-Wl,-headerpad_max_install_names",
 					"-I", Path.combine(targetDirectory, "obj"),
 					Path.combine(targetDirectory, "obj/ApplicationMain.c"),
 					// gcc 14 and clang 22 made incompatible-pointer-types an
@@ -268,6 +280,19 @@ class MacPlatform extends PlatformTarget
 						default:
 					}
 				}
+
+				// HASHLINK-NATIVE-ARM64-TEST-RUNTIME-S1 exploratory hlc attempt: sqlite.hdll
+				// (as vendored via SideWinder's native/sqlite build) carries a mismatched
+				// internal install-name (`sqlite-mac.hdll`) that doesn't match its actual
+				// filename on disk. The `hl` bytecode interpreter never notices -- it dlopens
+				// hdlls by literal filename, ignoring the embedded ID -- but hlc's real dyld
+				// link DOES resolve dependents by embedded ID, so the -change loop above
+				// (which assumes embedded ID == bare filename) silently fails to fix this one
+				// dependency and the resulting executable can't find it at launch. One-off
+				// fixup for this known mismatch; a real fix belongs in rebuilding sqlite.hdll
+				// with a correct -install_name.
+				System.runCommand("", "install_name_tool",
+					["-change", "sqlite-mac.hdll", "@executable_path/sqlite.hdll", executablePath]);
 			}
 			else
 			{
