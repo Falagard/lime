@@ -230,6 +230,15 @@ class LinuxPlatform extends PlatformTarget
 				var command = [
 					compiler,
 					"-O3",
+					// See the matching comment in MacPlatform.hx: hlc's generated C uses plain
+					// `int` for HashLink's Int (defined as 32-bit wrapping arithmetic), and
+					// signed overflow is undefined behavior in C -- at -O3 the compiler can (and
+					// verifiably does, on mac; not independently re-verified on Linux, but it's
+					// the identical clang/gcc -O3 UB-exploitation hazard) silently miscompile any
+					// overflow-dependent Int computation (hash functions, checksums, wrapping
+					// counters). -fwrapv removes the UB by making overflow wrap as HashLink's
+					// semantics require.
+					"-fwrapv",
 					"-o", executablePath,
 					"-std=c11",
 					"-Wl,-rpath,$ORIGIN",

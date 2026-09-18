@@ -378,6 +378,17 @@ class WindowsPlatform extends PlatformTarget
 						command = [
 							"gcc",
 							"-O3",
+							// See the matching comment in MacPlatform.hx: hlc's generated C uses
+							// plain `int` for HashLink's Int (defined as 32-bit wrapping
+							// arithmetic), and signed overflow is undefined behavior in C -- at
+							// -O3 the compiler can (and verifiably does, on mac; not independently
+							// re-verified on Windows/gcc, but it's the identical UB-exploitation
+							// hazard) silently miscompile any overflow-dependent Int computation.
+							// -fwrapv removes the UB by making overflow wrap as HashLink's
+							// semantics require. MSVC (the other branch below) isn't touched --
+							// it doesn't support -fwrapv and doesn't exploit this UB the same way
+							// by default, so no evidence it's affected.
+							"-fwrapv",
 							"-o", executablePath,
 							"-std=c11",
 							"-Wl,-subsystem,windows",
