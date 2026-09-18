@@ -241,6 +241,20 @@ class MacPlatform extends PlatformTarget
 					compiler,
 					"-arch", "x86_64",
 					"-O3",
+					// HashLink's Int is defined as 32-bit two's-complement WRAPPING arithmetic
+					// (see HashLink's own bytecode spec), but hlc's generated C uses plain `int`
+					// for it, and signed integer overflow is undefined behavior in C. At -O3,
+					// clang/gcc can (and does) exploit that UB and silently produce wrong
+					// results for any overflow-dependent Int computation (verified: a simple
+					// FNV-1a-style hash loop -- exactly the shape hlc emits for Haxe's `hash *=
+					// prime` pattern -- collapses two genuinely different inputs to the exact
+					// same wrong value, 0x80000000, under plain -O3; -fwrapv alone reproduces
+					// the correct -O0 result bit-for-bit). This is a real, silent correctness
+					// bug for ANY Haxe code relying on wrapping Int overflow (hash functions,
+					// checksums, wrapping counters) when compiled via hlc. -fwrapv tells the C
+					// compiler signed overflow wraps, matching what HashLink's semantics already
+					// require and removing the UB the optimizer was exploiting.
+					"-fwrapv",
 					"-o", executablePath,
 					"-std=c11",
 					"-Wl,-rpath,@executable_path",
